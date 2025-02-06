@@ -1,0 +1,33 @@
+# Dune build artifacts
+_build/
+*.install
+
+# OCaml compilation artifacts
+*.cmo
+*.cmi
+*.cmt
+*.cmx
+*.o
+*.a
+*.cmxa
+*.cmxs
+*.byte
+*.native
+*.obj
+
+# OPAM dependencies
+.opam/
+.opam-switch/
+
+# Editor and IDE files
+*.swp
+*.swo
+*.vscode/
+*.idea/
+*.DS_Store
+*.log
+
+# Temporary and backup files
+*.bak
+*.tmp
+*.lock
