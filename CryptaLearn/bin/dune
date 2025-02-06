@@ -1,4 +1,4 @@
 (executable
- (public_name CryptaLearn)
  (name main)
- (libraries CryptaLearn))
+ (public_name CryptaLearn-bin)
+ (libraries CryptaLearn CryptaLearn.fl CryptaLearn.he CryptaLearn.dp))
