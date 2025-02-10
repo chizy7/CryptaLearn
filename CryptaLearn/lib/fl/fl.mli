@@ -1,4 +1,12 @@
 (* Federated Learning Core Functions *)
 
-(** Simulates a federated learning round *)
-val federated_round : int -> float list -> float list 
+type model = float array
+type client_update = {
+  weights: model;
+  num_samples: int;
+}
+
+val initialize_model : int -> model
+val aggregate_models : client_update list -> model
+val train_round : model -> client_update list -> model
+val federated_average : client_update list -> model
