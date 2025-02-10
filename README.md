@@ -31,9 +31,10 @@ dune exec bin/main.exe
 
 ## Example Output
 ```bash
-Aggregated Model Updates: [0.966666666667; 0.966666666667; 0.966666666667]
-Encrypted: 1272, Decrypted: 1234
-Private Value with Noise: 5.174
+Aggregated Model First 3 Weights: [0.740644; 0.924251; 0.709245]
+Original: 42, Decrypted: 0
+Original: 5.000000, Private: 19.731683
+Clipped gradient norm: 3.000000
 ```
 
 # [TODO] 
