@@ -1,5 +1,6 @@
 (* Federated Learning Module *)
 
+(* === Basic Types === *)
 type activation = 
   | ReLU
   | Sigmoid
@@ -16,6 +17,7 @@ type model = {
   architecture: int array;   (* Layer sizes including input and output *)
 }
 
+(* === Training Types === *)
 type client_data = {
   features: float array array;  (* [|num_samples x input_size|] *)
   labels: float array;          (* [|num_samples|] *)
@@ -33,7 +35,29 @@ type client_update = {
   training_loss: float;
 }
 
-(* Activation functions and their derivatives *)
+(* === Versioning Types === *)
+type version = {
+  major: int;
+  minor: int;
+  patch: int;
+  timestamp: float;
+}
+
+type model_metadata = {
+  version: version;
+  architecture: int array;
+  created_at: float;
+  updated_at: float;
+  training_rounds: int;
+  total_clients: int;
+}
+
+type versioned_model = {
+  metadata: model_metadata;
+  model: model;
+}
+
+(* === Activation Functions === *)
 let relu x = max 0.0 x
 let relu_derivative x = if x > 0.0 then 1.0 else 0.0
 
@@ -61,7 +85,7 @@ let apply_activation_derivative act x = match act with
   | Sigmoid -> sigmoid_derivative x
   | Tanh -> tanh_derivative x
 
-(* Initialize model with random weights *)
+(* === Model Creation and Forward Pass === *)
 let create_model architecture =
   let layers = Array.make (Array.length architecture - 1) {
     weights = [|[|0.0|]|];
@@ -94,7 +118,6 @@ let create_model architecture =
   
   { layers; architecture }
 
-(* Forward pass implementation *)
 let forward_pass model input =
   let activations = Array.make (Array.length model.layers + 1) [||] in
   activations.(0) <- input;
@@ -120,7 +143,7 @@ let forward_pass model input =
   
   activations
 
-(* Backward pass implementation *)
+(* === Training Implementation === *)
 let backward_pass model activations target learning_rate =
   let num_layers = Array.length model.layers in
   let deltas = Array.make num_layers [||] in
@@ -182,7 +205,6 @@ let backward_pass model activations target learning_rate =
   
   model
 
-(* Training implementation *)
 let train_client model data config =
   let num_samples = Array.length data.features in
   let num_batches = (num_samples + config.batch_size - 1) / config.batch_size in
@@ -233,7 +255,7 @@ let train_client model data config =
     training_loss = !total_loss /. float_of_int (num_samples * config.num_epochs)
   }
 
-(* Model evaluation *)
+(* === Model Evaluation === *)
 let evaluate_model model data =
   let num_samples = Array.length data.features in
   let correct = ref 0 in
@@ -247,7 +269,7 @@ let evaluate_model model data =
   
   float_of_int !correct /. float_of_int num_samples
 
-(* Add the missing functions *)
+(* === Federated Operations === *)
 let aggregate_updates updates =
   match updates with
   | [] -> failwith "No updates to aggregate"
@@ -276,6 +298,7 @@ let aggregate_updates updates =
       ) updates;
       aggregated
 
+(* === Model Serialization === *)
 let serialize_model model =
   let serialize_layer layer =
     let weights_str = Array.map (Array.map string_of_float) layer.weights
@@ -328,6 +351,7 @@ let deserialize_model str =
       { layers; architecture }
   | _ -> failwith "Invalid model format"
 
+(* === Gradient Operations === *)
 let clip_gradients gradients clip_norm =
   let norm = sqrt (Array.fold_left (fun acc row ->
     acc +. Array.fold_left (fun acc' x -> acc' +. x *. x) 0.0 row
@@ -336,3 +360,93 @@ let clip_gradients gradients clip_norm =
     Array.map (Array.map (fun x -> x *. clip_norm /. norm)) gradients
   else
     gradients
+
+(* === Version Management === *)
+let create_version major minor patch =
+  { major; minor; patch; timestamp = Unix.time () }
+
+let increment_version version = function
+  | `Major -> { major = version.major + 1; minor = 0; patch = 0; timestamp = Unix.time () }
+  | `Minor -> { version with minor = version.minor + 1; patch = 0; timestamp = Unix.time () }
+  | `Patch -> { version with patch = version.patch + 1; timestamp = Unix.time () }
+
+(* === Version String Operations === *)
+let version_to_string version =
+  Printf.sprintf "%d.%d.%d" version.major version.minor version.patch
+
+let compare_versions v1 v2 =
+  match compare v1.major v2.major with
+  | 0 -> (match compare v1.minor v2.minor with
+          | 0 -> compare v1.patch v2.patch
+          | c -> c)
+  | c -> c
+
+(* === Model Versioning === *)
+let create_versioned_model model metadata =
+  { metadata; model }
+
+let update_model_metadata versioned_model new_model =
+  let metadata = {
+    versioned_model.metadata with
+    version = increment_version versioned_model.metadata.version `Patch;
+    updated_at = Unix.time ();
+    training_rounds = versioned_model.metadata.training_rounds + 1;
+  } in
+  { metadata; model = new_model }
+
+let is_compatible_version vm1 vm2 =
+  vm1.metadata.version.major = vm2.metadata.version.major &&
+  Array.length vm1.metadata.architecture = Array.length vm2.metadata.architecture &&
+  Array.for_all2 (=) vm1.metadata.architecture vm2.metadata.architecture
+
+(* === Secure Aggregation === *)
+let verify_model_integrity model =
+  let check_layer_bounds layer =
+    Array.for_all (fun row ->
+      Array.for_all (fun w -> abs_float w < 100.0) row
+    ) layer.weights &&
+    Array.for_all (fun b -> abs_float b < 100.0) layer.biases
+  in
+  Array.for_all check_layer_bounds model.layers
+
+let secure_aggregate models weights =
+  match models with
+  | [] -> failwith "No models to aggregate"
+  | base :: rest ->
+      if not (List.for_all (fun m -> is_compatible_version base m) rest) then
+        failwith "Incompatible model versions";
+
+      let total_weight = Array.fold_left (+.) 0.0 weights in
+      if abs_float (total_weight -. 1.0) > 1e-6 then
+        failwith "Weights must sum to 1.0";
+
+      (* Verify integrity of all models *)
+      if not (List.for_all (fun m -> verify_model_integrity m.model) models) then
+        failwith "Model integrity check failed";
+
+      (* Perform weighted aggregation *)
+      let aggregated = create_model base.metadata.architecture in
+      List.iteri (fun i vm ->
+        Array.iteri (fun layer_idx layer ->
+          let weight = weights.(i) in
+          Array.iteri (fun j row ->
+            Array.iteri (fun k w ->
+              aggregated.layers.(layer_idx).weights.(j).(k) <-
+                aggregated.layers.(layer_idx).weights.(j).(k) +. weight *. w
+            ) row
+          ) layer.weights;
+          Array.iteri (fun j b ->
+            aggregated.layers.(layer_idx).biases.(j) <-
+              aggregated.layers.(layer_idx).biases.(j) +. weight *. b
+          ) layer.biases
+        ) vm.model.layers
+      ) models;
+
+      let new_metadata = {
+        base.metadata with
+        version = increment_version base.metadata.version `Minor;
+        updated_at = Unix.time ();
+        training_rounds = base.metadata.training_rounds + 1;
+        total_clients = base.metadata.total_clients + List.length rest;
+      } in
+      create_versioned_model aggregated new_metadata

@@ -1,4 +1,4 @@
 (library
  (name fl)
  (public_name CryptaLearn.fl)
- (libraries core))
+ (libraries core unix))
