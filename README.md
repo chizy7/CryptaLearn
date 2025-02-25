@@ -76,6 +76,9 @@ Available options:
 - `--skip-he`: Skip homomorphic encryption tests
 - `--skip-dp`: Skip differential privacy tests
 
+## Documentation
+For detailed information about CryptaLearn's architecture, modules, and advanced usage, please see the [comprehensive documentation](DOCUMENTATION.md).
+
 ## Example Output
 ```
 CryptaLearn Test Suite
