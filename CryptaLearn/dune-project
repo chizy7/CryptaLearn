@@ -5,15 +5,15 @@
 (generate_opam_files true)
 
 (source
- (github username/reponame))
+ (github chizy7/CryptaLearn))
 
-(authors "Author Name <author@example.com>")
+(authors "Chizaram Chibueze <chizy7@outlook.com>")
 
-(maintainers "Maintainer Name <maintainer@example.com>")
+(maintainers "Chizaram Chibueze <chizy7@outlook.com>")
 
-(license LICENSE)
+(license MIT)
 
-(documentation https://url/to/documentation)
+(documentation https://github.com/chizy7/CryptaLearn/blob/main/DOCUMENTATION.md)
 
 (package
  (name CryptaLearn)
@@ -21,6 +21,6 @@
  (description "A privacy-preserving machine learning library implementing federated learning, homomorphic encryption, and differential privacy")
  (depends ocaml dune core zarith unix (odoc :with-doc))
  (tags
-  ("add topics" "to describe" your project)))
+  ("privacy" "machine-learning" "federated-learning" "homomorphic-encryption" "differential-privacy")))
 
 ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/reference/dune-project/index.html

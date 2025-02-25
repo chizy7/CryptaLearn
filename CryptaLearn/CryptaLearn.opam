@@ -3,13 +3,19 @@ opam-version: "2.0"
 synopsis: "A privacy-preserving machine learning library"
 description:
   "A privacy-preserving machine learning library implementing federated learning, homomorphic encryption, and differential privacy"
-maintainer: ["Maintainer Name <maintainer@example.com>"]
-authors: ["Author Name <author@example.com>"]
-license: "LICENSE"
-tags: ["add topics" "to describe" "your" "project"]
-homepage: "https://github.com/username/reponame"
-doc: "https://url/to/documentation"
-bug-reports: "https://github.com/username/reponame/issues"
+maintainer: ["Chizaram Chibueze <chizy7@outlook.com>"]
+authors: ["Chizaram Chibueze <chizy7@outlook.com>"]
+license: "MIT"
+tags: [
+  "privacy"
+  "machine-learning"
+  "federated-learning"
+  "homomorphic-encryption"
+  "differential-privacy"
+]
+homepage: "https://github.com/chizy7/CryptaLearn"
+doc: "https://github.com/chizy7/CryptaLearn/blob/main/DOCUMENTATION.md"
+bug-reports: "https://github.com/chizy7/CryptaLearn/issues"
 depends: [
   "ocaml"
   "dune" {>= "3.17"}
@@ -32,4 +38,4 @@ build: [
     "@doc" {with-doc}
   ]
 ]
-dev-repo: "git+https://github.com/username/reponame.git"
+dev-repo: "git+https://github.com/chizy7/CryptaLearn.git"
