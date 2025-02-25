@@ -17,9 +17,9 @@
 
 (package
  (name CryptaLearn)
- (synopsis "A short synopsis")
- (description "A longer description")
- (depends ocaml)
+ (synopsis "A privacy-preserving machine learning library")
+ (description "A privacy-preserving machine learning library implementing federated learning, homomorphic encryption, and differential privacy")
+ (depends ocaml dune core zarith unix (odoc :with-doc))
  (tags
   ("add topics" "to describe" your project)))
 
