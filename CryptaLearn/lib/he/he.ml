@@ -1,3 +1,5 @@
+[@@@ocaml.warning "-32"]  (* Suppress unused value warnings *)
+
 (** Homomorphic Encryption Module *)
 
 (* === Key Module Types === *)
@@ -235,25 +237,64 @@ module KeyRotationImpl = struct
   }
 
   let state = ref None
+  let mutex = Mutex.create () (* Mutex for thread safety *)
 
   let init rotation_period key_bits =
-    let pk, sk = generate_keypair key_bits in
-    state := Some {
-      current_pk = pk;
-      current_sk = sk;
-      last_rotation_time = Unix.time ();
-      rotation_period;
-      key_bits;
-    }
+    Mutex.lock mutex;
+    try
+      let pk, sk = generate_keypair key_bits in
+      state := Some {
+        current_pk = pk;
+        current_sk = sk;
+        last_rotation_time = Unix.time ();
+        rotation_period;
+        key_bits;
+      };
+      Mutex.unlock mutex
+    with e ->
+      Mutex.unlock mutex;
+      raise e
 
   let get_state () =
-    match !state with
-    | Some s -> s
-    | None -> failwith "Key rotation not initialized"
+    Mutex.lock mutex;
+    try
+      let result = match !state with
+        | Some s -> s
+        | None -> failwith "Key rotation not initialized"
+      in
+      Mutex.unlock mutex;
+      result
+    with e ->
+      Mutex.unlock mutex;
+      raise e
 
   let rotation_needed () =
     let s = get_state () in
     Unix.time () -. s.last_rotation_time > float_of_int s.rotation_period
+    
+  (* Thread-safe update of keys *)
+  let update_keys () =
+    Mutex.lock mutex;
+    try
+      match !state with
+      | Some s ->
+          if (Unix.time () -. s.last_rotation_time > float_of_int s.rotation_period) then
+            let new_pk, new_sk = generate_keypair s.key_bits in
+            s.current_pk <- new_pk;
+            s.current_sk <- new_sk;
+            s.last_rotation_time <- Unix.time ();
+            Mutex.unlock mutex;
+            (new_pk, new_sk, true) (* Keys were rotated *)
+          else
+            let result = (s.current_pk, s.current_sk, false) in
+            Mutex.unlock mutex;
+            result
+      | None ->
+          Mutex.unlock mutex;
+          failwith "Key rotation not initialized"
+    with e ->
+      Mutex.unlock mutex;
+      raise e
 end
 
 let create_key_rotation rotation_period key_bits =
@@ -267,15 +308,11 @@ let create_key_rotation rotation_period key_bits =
       (s.current_pk, s.current_sk)
     
     let rotate_keys () =
-      let s = KeyRotationImpl.get_state () in
-      if KeyRotationImpl.rotation_needed () then  (* Use the function *)
-        let new_pk, new_sk = generate_keypair s.key_bits in
-        s.current_pk <- new_pk;
-        s.current_sk <- new_sk;
-        s.last_rotation_time <- Unix.time ();
-        (new_pk, new_sk)
-      else
-        (s.current_pk, s.current_sk)
+      let pk, sk, rotated = KeyRotationImpl.update_keys () in
+      if rotated then
+        (* Log rotation event for auditing purposes *)
+        Printf.eprintf "[INFO] Keys rotated at %f\n" (Unix.time ());
+      (pk, sk)
     
     let last_rotation () =
       let s = KeyRotationImpl.get_state () in
