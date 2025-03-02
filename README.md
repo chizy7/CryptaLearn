@@ -88,46 +88,65 @@ Configuration:
   Key Size: 1024 bits
   Matrix Size: 2x2
   DP Parameters: ε=0.10, δ=1.00e-05
+  Verification: Enabled
+  Seed: Random
+  Fail on error: No
 
 Running Federated Learning Tests...
 Testing Federated Learning:
-Final model accuracy: 48.80%
+Final model accuracy: 100.00%
+✓ Accuracy verification passed (>70%)
 Federated Learning Tests completed successfully.
 
 Running Homomorphic Encryption Tests...
+
 Testing Homomorphic Encryption:
 Matrix addition result:
 6.0 8.0 
 10.0 12.0 
+✓ Matrix addition verification passed
+
 Batch operation result: 1.0 2.0 3.0 4.0 5.0 
+✓ Batch operation verification passed
+
 Testing complex matrix operations:
-Time for Matrix encryption: 0.004 seconds
-Time for Matrix encryption: 0.004 seconds
+Time for Matrix encryption: 0.005 seconds
+Time for Matrix encryption: 0.005 seconds
 Time for Matrix addition: 0.001 seconds
-Time for Matrix decryption: 0.003 seconds
-Time for Matrix multiplication: 0.004 seconds
+Time for Matrix decryption: 0.004 seconds
+✓ Matrix addition verification passed
+Time for Matrix multiplication: 0.005 seconds
+✓ Matrix multiplication verification passed
 Time for Parallel encryption: 0.005 seconds
 Time for Parallel decryption: 0.004 seconds
+✓ Parallel operations verification passed
 Complex matrix operations completed.
 Homomorphic Encryption Tests completed successfully.
 
 Running Differential Privacy Tests...
 Testing Enhanced Differential Privacy:
 Privacy accounting:
-Budget spent - Epsilon: 0.4799, Delta: 0.0000
+Budget spent - Epsilon: 0.1000, Delta: 0.0000
+✓ Privacy accounting verification passed
+
 Noise addition test:
 Original values: 5.0 10.0 15.0 20.0 25.0 
-Noisy values: 66.5 98.0 -54.9 22.0 29.9 
+Noisy values: 31.1 62.2 -138.3 -47.7 -6.5 
+✓ Noise addition verification passed (avg noise: 66.17)
+
 Testing advanced DP features:
 RDP parameters - Epsilon: 0.0825
-Private mean: 3.474
-Private histogram: -7.2 5.1 30.3 14.8 33.2 
+True mean: 0.550, Private mean: 0.744
+✓ Private mean verification passed
+Private histogram: 3.6 -2.4 9.5 5.6 -14.3 
+
 Privacy budget management:
-Query results: -193.88 104.95 205.84 116.86 -201.66 
+Query results: -212.56 -174.50 103.62 150.24 183.81 
 Remaining epsilon: 0.000
+✓ Budget management verification passed
 Differential Privacy Tests completed successfully.
 
-All requested tests completed.
+All requested tests completed successfully.
 ```
 
 ## Usage Examples
@@ -210,11 +229,12 @@ let rdp_params = compute_rdp moments 0.1 in
 
 ## Performance
 Performance metrics from test runs:
-- Matrix encryption: ~0.004 seconds
+- Matrix encryption: ~0.005 seconds
 - Matrix addition: ~0.001 seconds
-- Matrix decryption: ~0.003 seconds
-- Matrix multiplication: ~0.004 seconds
+- Matrix decryption: ~0.004 seconds
+- Matrix multiplication: ~0.005 seconds
 - Parallel encryption: ~0.005 seconds
+- Parallel decryption: ~0.004 seconds
 
 ## Contributing
 Contributions are welcome! Please feel free to submit a Pull Request.

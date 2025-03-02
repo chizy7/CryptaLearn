@@ -40,14 +40,14 @@ type version = {
   major: int;
   minor: int;
   patch: int;
-  timestamp: float;
+  timestamp: int;  (* Unix epoch in seconds - changed from float to int *)
 }
 
 type model_metadata = {
   version: version;
   architecture: int array;
-  created_at: float;
-  updated_at: float;
+  created_at: int;  (* Unix epoch in seconds - changed from float to int *)
+  updated_at: int;  (* Unix epoch in seconds - changed from float to int *)
   training_rounds: int;
   total_clients: int;
 }
@@ -56,6 +56,13 @@ type versioned_model = {
   metadata: model_metadata;
   model: model;
 }
+
+(* === Update Classification === *)
+type update_type = [
+  | `Major  (* Breaking changes, e.g., architecture changes *)
+  | `Minor  (* New functionality, e.g., significant learning improvement *)
+  | `Patch  (* Bug fixes, minor improvements *)
+]
 
 (* === Activation Functions === *)
 let relu x = max 0.0 x
@@ -361,14 +368,32 @@ let clip_gradients gradients clip_norm =
   else
     gradients
 
+(* Configurable integrity checker *)
+type integrity_config = {
+  max_weight_magnitude: float;   (* Maximum allowed weight/bias magnitude *)
+  max_gradient_norm: float;      (* Maximum allowed gradient norm *)
+  check_nan_inf: bool;           (* Whether to check for NaN/Inf values *)
+  allowed_activations: activation list; (* List of allowed activation functions *)
+}
+
+let default_integrity_config = {
+  max_weight_magnitude = 100.0;
+  max_gradient_norm = 10.0;
+  check_nan_inf = true;
+  allowed_activations = [ReLU; Sigmoid; Tanh];
+}
+
+let clip_gradients_with_config gradients config =
+  clip_gradients gradients config.max_gradient_norm
+
 (* === Version Management === *)
 let create_version major minor patch =
-  { major; minor; patch; timestamp = Unix.time () }
+  { major; minor; patch; timestamp = int_of_float (Unix.time ()) }
 
 let increment_version version = function
-  | `Major -> { major = version.major + 1; minor = 0; patch = 0; timestamp = Unix.time () }
-  | `Minor -> { version with minor = version.minor + 1; patch = 0; timestamp = Unix.time () }
-  | `Patch -> { version with patch = version.patch + 1; timestamp = Unix.time () }
+  | `Major -> { major = version.major + 1; minor = 0; patch = 0; timestamp = int_of_float (Unix.time ()) }
+  | `Minor -> { version with minor = version.minor + 1; patch = 0; timestamp = int_of_float (Unix.time ()) }
+  | `Patch -> { version with patch = version.patch + 1; timestamp = int_of_float (Unix.time ()) }
 
 (* === Version String Operations === *)
 let version_to_string version =
@@ -385,11 +410,53 @@ let compare_versions v1 v2 =
 let create_versioned_model model metadata =
   { metadata; model }
 
+(* Determine update type based on model changes *)
+let determine_update_type (old_model:model) (new_model:model) =
+  (* Check for architecture changes (major update) *)
+  if Array.length old_model.architecture != Array.length new_model.architecture then
+    `Major
+  else if not (Array.for_all2 (=) old_model.architecture new_model.architecture) then
+    `Major
+  (* Check for significant changes in weights (could indicate minor improvement) *)
+  else
+    let weight_diff_ratio = ref 0.0 in
+    let total_weights = ref 0 in
+    
+    for i = 0 to Array.length old_model.layers - 1 do
+      let old_layer = old_model.layers.(i) in
+      let new_layer = new_model.layers.(i) in
+      
+      for j = 0 to Array.length old_layer.weights - 1 do
+        for k = 0 to Array.length old_layer.weights.(j) - 1 do
+          weight_diff_ratio := !weight_diff_ratio +. 
+                             abs_float (new_layer.weights.(j).(k) -. old_layer.weights.(j).(k));
+          total_weights := !total_weights + 1;
+        done
+      done;
+      
+      for j = 0 to Array.length old_layer.biases - 1 do
+        weight_diff_ratio := !weight_diff_ratio +. 
+                           abs_float (new_layer.biases.(j) -. old_layer.biases.(j));
+        total_weights := !total_weights + 1;
+      done
+    done;
+    
+    let avg_change = !weight_diff_ratio /. float_of_int !total_weights in
+    
+    (* Threshold for considering a minor vs patch update *)
+    if avg_change > 0.1 then  (* Significant changes, more than 10% average weight change *)
+      `Minor
+    else
+      `Patch
+
 let update_model_metadata versioned_model new_model =
+  (* Determine update type based on model changes *)
+  let update_type = determine_update_type versioned_model.model new_model in
+  
   let metadata = {
     versioned_model.metadata with
-    version = increment_version versioned_model.metadata.version `Patch;
-    updated_at = Unix.time ();
+    version = increment_version versioned_model.metadata.version update_type;
+    updated_at = int_of_float (Unix.time ());
     training_rounds = versioned_model.metadata.training_rounds + 1;
   } in
   { metadata; model = new_model }
@@ -399,54 +466,110 @@ let is_compatible_version vm1 vm2 =
   Array.length vm1.metadata.architecture = Array.length vm2.metadata.architecture &&
   Array.for_all2 (=) vm1.metadata.architecture vm2.metadata.architecture
 
-(* === Secure Aggregation === *)
-let verify_model_integrity model =
-  let check_layer_bounds layer =
-    Array.for_all (fun row ->
-      Array.for_all (fun w -> abs_float w < 100.0) row
-    ) layer.weights &&
-    Array.for_all (fun b -> abs_float b < 100.0) layer.biases
+(* === Model Integrity === *)
+let verify_model_integrity ?(config=default_integrity_config) (model:model) =
+  let check_layer layer =
+    (* Check weight magnitudes *)
+    let weights_ok = Array.for_all (fun row ->
+      Array.for_all (fun w -> 
+        abs_float w < config.max_weight_magnitude &&
+        (not config.check_nan_inf || (not (Float.is_nan w) && not (Float.is_infinite w)))
+      ) row
+    ) layer.weights in
+    
+    (* Check bias magnitudes *)
+    let biases_ok = Array.for_all (fun b -> 
+      abs_float b < config.max_weight_magnitude &&
+      (not config.check_nan_inf || (not (Float.is_nan b) && not (Float.is_infinite b)))
+    ) layer.biases in
+    
+    (* Check activation function *)
+    let activation_ok = List.mem layer.activation config.allowed_activations in
+    
+    weights_ok && biases_ok && activation_ok
   in
-  Array.for_all check_layer_bounds model.layers
+  
+  (* Check architecture sanity *)
+  let architecture_ok = 
+    Array.length model.architecture >= 2 && (* At least input and output layer *)
+    Array.for_all (fun size -> size > 0) model.architecture &&
+    Array.length model.layers = Array.length model.architecture - 1
+  in
+  
+  architecture_ok && Array.for_all check_layer model.layers
 
+(* === Secure Aggregation Result Type === *)
 let secure_aggregate models weights =
-  match models with
-  | [] -> failwith "No models to aggregate"
-  | base :: rest ->
-      if not (List.for_all (fun m -> is_compatible_version base m) rest) then
-        failwith "Incompatible model versions";
-
-      let total_weight = Array.fold_left (+.) 0.0 weights in
-      if abs_float (total_weight -. 1.0) > 1e-6 then
-        failwith "Weights must sum to 1.0";
-
-      (* Verify integrity of all models *)
-      if not (List.for_all (fun m -> verify_model_integrity m.model) models) then
-        failwith "Model integrity check failed";
-
-      (* Perform weighted aggregation *)
-      let aggregated = create_model base.metadata.architecture in
-      List.iteri (fun i vm ->
-        Array.iteri (fun layer_idx layer ->
-          let weight = weights.(i) in
-          Array.iteri (fun j row ->
-            Array.iteri (fun k w ->
-              aggregated.layers.(layer_idx).weights.(j).(k) <-
-                aggregated.layers.(layer_idx).weights.(j).(k) +. weight *. w
-            ) row
-          ) layer.weights;
-          Array.iteri (fun j b ->
-            aggregated.layers.(layer_idx).biases.(j) <-
-              aggregated.layers.(layer_idx).biases.(j) +. weight *. b
-          ) layer.biases
-        ) vm.model.layers
-      ) models;
-
-      let new_metadata = {
-        base.metadata with
-        version = increment_version base.metadata.version `Minor;
-        updated_at = Unix.time ();
-        training_rounds = base.metadata.training_rounds + 1;
-        total_clients = base.metadata.total_clients + List.length rest;
-      } in
-      create_versioned_model aggregated new_metadata
+  (* Validate inputs *)
+  if List.length models = 0 then
+    failwith "No models to aggregate";
+  
+  let base = List.hd models in
+  let compatibility_check = 
+    List.for_all (fun m -> is_compatible_version base m) (List.tl models) in
+  
+  if not compatibility_check then
+    failwith "Incompatible model versions";
+  
+  let total_weight = Array.fold_left (+.) 0.0 weights in
+  if abs_float (total_weight -. 1.0) > 1e-6 then
+    failwith "Weights must sum to 1.0";
+  
+  (* Verify integrity of all models *)
+  let integrity_config = {
+    default_integrity_config with
+    (* Slightly more permissive for aggregation *)
+    max_weight_magnitude = 150.0;
+  } in
+  
+  let integrity_check =
+    List.for_all (fun m -> verify_model_integrity ~config:integrity_config m.model) models in
+  
+  if not integrity_check then
+    failwith "Model integrity check failed";
+  
+  (* Common aggregation function for reuse *)
+  let perform_aggregation models weights =
+    let base_model = (List.hd models).model in
+    let aggregated = create_model base_model.architecture in
+    
+    List.iteri (fun i vm ->
+      let weight = weights.(i) in
+      Array.iteri (fun layer_idx layer ->
+        Array.iteri (fun j row ->
+          Array.iteri (fun k w ->
+            aggregated.layers.(layer_idx).weights.(j).(k) <-
+              aggregated.layers.(layer_idx).weights.(j).(k) +. weight *. w
+          ) row
+        ) layer.weights;
+        Array.iteri (fun j b ->
+          aggregated.layers.(layer_idx).biases.(j) <-
+            aggregated.layers.(layer_idx).biases.(j) +. weight *. b
+        ) layer.biases
+      ) vm.model.layers
+    ) models;
+    
+    aggregated
+  in
+  
+  (* Update metadata for the new aggregated model *)
+  let aggregated_model = perform_aggregation models weights in
+  
+  (* Determine if this is a minor or patch update based on changes *)
+  let base_model = (List.hd models).model in
+  let update_type = determine_update_type base_model aggregated_model in
+  
+  let new_metadata = {
+    base.metadata with
+    version = increment_version base.metadata.version 
+              (if update_type = `Patch then `Minor else update_type);
+    updated_at = int_of_float (Unix.time ());
+    training_rounds = base.metadata.training_rounds + 1;
+    total_clients = base.metadata.total_clients + List.length (List.tl models);
+  } in
+  
+  (* Final integrity check on aggregated model *)
+  if verify_model_integrity aggregated_model then
+    create_versioned_model aggregated_model new_metadata
+  else
+    failwith "Aggregated model failed integrity check"

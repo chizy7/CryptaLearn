@@ -45,6 +45,12 @@ The Federated Learning module (`fl.ml`) enables training machine learning models
 - Activation functions: ReLU, Sigmoid, Tanh
 - Forward/backward propagation implementation
 
+#### Model Integrity Verification
+- Validates model structure and parameters
+- Ensures weights and biases are within reasonable magnitudes
+- Checks for NaN/Inf values
+- Verifies activation functions are from the allowed set
+
 #### Training Process
 ```
 ┌─────────┐      ┌─────────┐      ┌─────────┐
@@ -202,7 +208,7 @@ The Differential Privacy module (`dp.ml`) adds noise to data to provide privacy 
 #### Local Differential Privacy
 - Randomized response
 - Local histograms
-- Private mean estimation
+- Private mean estimation (optimized implementation that adds noise to the sum rather than individual values)
 
 ### API Examples
 
@@ -263,6 +269,7 @@ For maximum privacy and utility, you can combine all three technologies:
 - Balance privacy budget across multiple queries
 - Consider sensitivity when designing queries
 - Use advanced composition for better privacy accounting
+- **Add noise to aggregates rather than individual values when possible for better utility**
 
 ### Federated Learning
 - Communication efficiency is crucial
@@ -301,5 +308,5 @@ For maximum privacy and utility, you can combine all three technologies:
 | `clip_gradients` | Limit sensitivity of gradients |
 | `compute_privacy_spent` | Calculate privacy budget used |
 | `create_moments_accountant` | Create sophisticated privacy tracking |
-| `local_dp_mean` | Privately compute mean |
+| `local_dp_mean` | Privately compute mean by adding noise to the sum (not individual values) |
 | `manage_privacy_budget` | Handle multiple queries under budget |
