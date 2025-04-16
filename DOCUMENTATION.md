@@ -24,13 +24,13 @@ CryptaLearn is a privacy-preserving machine learning library written in OCaml. I
 
 CryptaLearn is organized into three main modules:
 
-```
-CryptaLearn/
-├── lib/
-│   ├── fl/             # Federated Learning module
-│   ├── he/             # Homomorphic Encryption module
-│   ├── dp/             # Differential Privacy module
-```
+| Directory | Description |
+|-----------|-------------|
+| `CryptaLearn/` | Root directory |
+| `├── lib/` | Libraries folder |
+| `│   ├── fl/` | Federated Learning module |
+| `│   ├── he/` | Homomorphic Encryption module |
+| `│   └── dp/` | Differential Privacy module |
 
 Each module can be used independently or in combination to create privacy-preserving machine learning solutions.
 
@@ -52,29 +52,15 @@ The Federated Learning module (`fl.ml`) enables training machine learning models
 - Verifies activation functions are from the allowed set
 
 #### Training Process
-```
-┌─────────┐      ┌─────────┐      ┌─────────┐
-│ Client 1 │      │ Client 2 │      │ Client 3 │
-└────┬────┘      └────┬────┘      └────┬────┘
-     │ Train          │ Train          │ Train
-     ▼                ▼                ▼
-┌────┴────┐      ┌────┴────┐      ┌────┴────┐
-│  Update  │      │  Update  │      │  Update  │
-└────┬────┘      └────┬────┘      └────┬────┘
-     │                │                │
-     └────────────────┼────────────────┘
-                      │
-                      ▼
-               ┌────────────┐
-               │   Secure   │
-               │ Aggregation│
-               └─────┬──────┘
-                     │
-                     ▼
-               ┌────────────┐
-               │   Global   │
-               │    Model   │
-               └────────────┘
+```mermaid
+graph TD
+    C1[Client 1] -->|Train| U1[Update]
+    C2[Client 2] -->|Train| U2[Update]
+    C3[Client 3] -->|Train| U3[Update]
+    U1 --> SA[Secure Aggregation]
+    U2 --> SA
+    U3 --> SA
+    SA --> GM[Global Model]
 ```
 
 #### Model Versioning
@@ -112,25 +98,13 @@ The Homomorphic Encryption module (`he.ml`) allows computations on encrypted dat
 Implements the Paillier cryptosystem, which is an additively homomorphic encryption scheme:
 - Encrypt(m₁) * Encrypt(m₂) = Encrypt(m₁ + m₂)
 
-```
-Plain values:      m₁         m₂
-                   │          │
-                   ▼          ▼
-Encryption:    Encrypt     Encrypt
-                   │          │
-                   ▼          ▼
-Ciphertexts:      c₁         c₂
-                   │          │
-                   └────┬─────┘
-                        │
-                        ▼
-Operation:        c₁ * c₂ = c₃
-                        │
-                        ▼
-Decryption:        Decrypt
-                        │
-                        ▼
-Result:            m₁ + m₂
+```mermaid
+graph TD
+    PV1[Plain value m₁] -->|Encrypt| CT1[Ciphertext c₁]
+    PV2[Plain value m₂] -->|Encrypt| CT2[Ciphertext c₂]
+    CT1 --> OP[Operation c₁ * c₂ = c₃]
+    CT2 --> OP
+    OP -->|Decrypt| R[Result m₁ + m₂]
 ```
 
 #### Advanced Operations
@@ -175,34 +149,14 @@ The Differential Privacy module (`dp.ml`) adds noise to data to provide privacy 
 - Advanced composition theorem
 - Moments accountant for Rényi Differential Privacy (RDP)
 
-```
-┌────────────┐       ┌────────────┐
-│ Raw Data   │       │ Query 1    │
-└─────┬──────┘       └──────┬─────┘
-      │                     │
-      └──────────┬──────────┘
-                 │
-                 ▼
-        ┌──────────────────┐
-        │  Privacy Budget  │◄────┐
-        │     Tracking     │     │
-        └─────────┬────────┘     │
-                  │              │
-                  ▼              │
-        ┌──────────────────┐     │
-        │   Add Noise      │     │
-        └─────────┬────────┘     │
-                  │              │
-                  ▼              │
-        ┌──────────────────┐     │
-        │ Noisy Response   │     │
-        └─────────┬────────┘     │
-                  │              │
-                  ▼              │
-        ┌──────────────────┐     │
-        │ Update Privacy   │─────┘
-        │    Budget        │
-        └──────────────────┘
+```mermaid
+graph TD
+    RD[Raw Data] --> PBT[Privacy Budget Tracking]
+    Q1[Query 1] --> PBT
+    PBT --> AN[Add Noise]
+    AN --> NR[Noisy Response]
+    NR --> UPB[Update Privacy Budget]
+    UPB --> PBT
 ```
 
 #### Local Differential Privacy
