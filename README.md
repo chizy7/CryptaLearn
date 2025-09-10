@@ -2,6 +2,8 @@
 
 CryptaLearn is a privacy-preserving machine learning library in OCaml, implementing federated learning, homomorphic encryption, and differentially private stochastic gradient descent (DP-SGD). This library is designed to enable secure and decentralized machine learning while ensuring user data privacy.
 
+- [CryptaLearn Node](https://github.com/chizy7/cryptalearn_node) - Backend for coordinating federated learning rounds and model updates from OCaml clients in CryptaLearn.
+
 ## Features
 ### Federated Learning (FL)
 - Decentralized model training across multiple clients

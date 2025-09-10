@@ -27,10 +27,10 @@ CryptaLearn is organized into three main modules:
 | Directory | Description |
 |-----------|-------------|
 | `CryptaLearn/` | Root directory |
-| `├── lib/` | Libraries folder |
-| `│   ├── fl/` | Federated Learning module |
-| `│   ├── he/` | Homomorphic Encryption module |
-| `│   └── dp/` | Differential Privacy module |
+| `lib/` | Libraries folder |
+| `lib/fl/` | Federated Learning module |
+| `lib/he/` | Homomorphic Encryption module |
+| `lib/dp/` | Differential Privacy module |
 
 Each module can be used independently or in combination to create privacy-preserving machine learning solutions.
 
