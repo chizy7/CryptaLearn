@@ -22,15 +22,15 @@ Batch operation result: 1.0 2.0 3.0 4.0 5.0
 ✓ Batch operation verification passed
 
 Testing complex matrix operations:
-Time for Matrix encryption: 0.032 seconds
-Time for Matrix encryption: 0.032 seconds
+Time for Matrix encryption: 0.034 seconds
+Time for Matrix encryption: 0.034 seconds
 Time for Matrix addition: 0.007 seconds
 Time for Matrix decryption: 0.027 seconds
 ✓ Matrix addition verification passed
-Time for Matrix multiplication: 0.034 seconds
+Time for Matrix multiplication: 0.035 seconds
 ✓ Matrix multiplication verification passed
-Time for Parallel encryption: 0.032 seconds
-Time for Parallel decryption: 0.026 seconds
+Time for Parallel encryption: 0.034 seconds
+Time for Parallel decryption: 0.035 seconds
 ✓ Parallel operations verification passed
 Complex matrix operations completed.
 Homomorphic Encryption Tests completed successfully.

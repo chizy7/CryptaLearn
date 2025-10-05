@@ -36,12 +36,12 @@ Batch operation result: 1.0 2.0 3.0 4.0 5.0
 ✓ Batch operation verification passed
 
 Testing complex matrix operations:
-Time for Matrix encryption: 0.004 seconds
-Time for Matrix encryption: 0.004 seconds
+Time for Matrix encryption: 0.005 seconds
+Time for Matrix encryption: 0.005 seconds
 Time for Matrix addition: 0.001 seconds
 Time for Matrix decryption: 0.004 seconds
 ✓ Matrix addition verification passed
-Time for Matrix multiplication: 0.004 seconds
+Time for Matrix multiplication: 0.005 seconds
 ✓ Matrix multiplication verification passed
 Time for Parallel encryption: 0.005 seconds
 Time for Parallel decryption: 0.004 seconds

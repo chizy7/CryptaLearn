@@ -26,7 +26,7 @@ echo ""
 
 # Run experiments for each epsilon
 for eps in "${EPSILONS[@]}"; do
-    echo "🔬 Running experiment with ε=$eps (seed=42)..."
+    echo " Running experiment with ε=$eps (seed=42)..."
     output_file="docs/experiment_results/epsilon_${eps}.txt"
 
     dune exec bin/main.exe -- \
