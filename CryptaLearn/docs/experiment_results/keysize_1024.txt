@@ -1,0 +1,38 @@
+
+CryptaLearn Test Suite
+====================
+Configuration:
+  FL Samples: 100
+  Key Size: 1024 bits
+  Matrix Size: 2x2
+  DP Parameters: ε=0.10, δ=1.00e-05
+  Verification: Enabled
+  Seed: 42
+  Fail on error: No
+
+Running Homomorphic Encryption Tests...
+
+Testing Homomorphic Encryption:
+Matrix addition result:
+6.0 8.0 
+10.0 12.0 
+✓ Matrix addition verification passed
+
+Batch operation result: 1.0 2.0 3.0 4.0 5.0 
+✓ Batch operation verification passed
+
+Testing complex matrix operations:
+Time for Matrix encryption: 0.005 seconds
+Time for Matrix encryption: 0.004 seconds
+Time for Matrix addition: 0.001 seconds
+Time for Matrix decryption: 0.004 seconds
+✓ Matrix addition verification passed
+Time for Matrix multiplication: 0.005 seconds
+✓ Matrix multiplication verification passed
+Time for Parallel encryption: 0.005 seconds
+Time for Parallel decryption: 0.004 seconds
+✓ Parallel operations verification passed
+Complex matrix operations completed.
+Homomorphic Encryption Tests completed successfully.
+
+All requested tests completed successfully.

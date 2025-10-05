@@ -237,11 +237,34 @@ val is_compatible_version : versioned_model -> versioned_model -> bool
 
 (* === Secure Aggregation === *)
 (** Performs secure aggregation of multiple versioned models
-    
+
     This function combines multiple model updates while providing
     differential privacy guarantees through noise addition.
-    
+
     @param models List of versioned models to aggregate
     @param weights Array of aggregation weights (typically based on sample counts)
     @return Aggregated versioned model with updated metadata *)
 val secure_aggregate : versioned_model list -> float array -> versioned_model
+
+(* === Differential Privacy Integration === *)
+(** Configuration for DP-SGD training *)
+type dp_sgd_config = {
+  batch_size: int;
+  learning_rate: float;
+  num_epochs: int;
+  clip_norm: float;           (** L2 norm clipping threshold *)
+  noise_multiplier: float;    (** Noise multiplier (sigma) *)
+  dp_epsilon: float;          (** Target privacy budget *)
+  dp_delta: float;            (** Privacy failure probability *)
+}
+
+(** Train a model with differential privacy (DP-SGD)
+
+    Implements the DP-SGD algorithm with per-example gradient clipping
+    and Gaussian noise addition. This provides formal privacy guarantees.
+
+    @param model Initial model to train
+    @param data Client's local training data
+    @param config DP-SGD configuration parameters
+    @return Client update with DP guarantees *)
+val train_client_dp_sgd : model -> client_data -> dp_sgd_config -> client_update

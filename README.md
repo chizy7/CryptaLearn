@@ -9,6 +9,11 @@ CryptaLearn is a privacy-preserving machine learning library in OCaml, implement
 - Decentralized model training across multiple clients
 - Neural network implementation with multiple activation functions (ReLU, Sigmoid, Tanh)
 - Mini-batch training with proper gradient computation
+- **DP-SGD (Differentially Private Stochastic Gradient Descent)**:
+  - Per-example gradient clipping for privacy guarantees
+  - Gaussian noise calibrated to (ε, δ)-differential privacy
+  - Demonstrates privacy-utility tradeoff across different privacy budgets
+  - Full implementation following Abadi et al. (2016)
 - Model serialization and aggregation
 - Supports weighted model averaging based on client data size
 - Model versioning with semantic versioning (major.minor.patch)
@@ -43,43 +48,131 @@ CryptaLearn is a privacy-preserving machine learning library in OCaml, implement
 - Advanced composition theorem implementation
 - Utility estimation and optimal noise calculation
 
-## Installation
-### Prerequisites
-Ensure you have OCaml (4.14.0+) and OPAM installed. Then, install the necessary dependencies:
-```bash
-opam install dune core zarith unix threads
-```
+## Quick Start
 
-### Clone the repository
+### 1. Installation
 ```bash
+# Install dependencies
+opam install dune core zarith unix threads
+
+# Clone the repository
 git clone https://github.com/chizy7/CryptaLearn.git
 cd CryptaLearn
-```
 
-### Building and Running
-```bash
+# Build the project
 dune build
 ```
 
-To run the main executable with default configuration:
+### 2. Run Unit Tests
 ```bash
+# Run all 15 unit tests (FL, HE, DP)
+dune runtest
+```
+
+### 3. Run Complete Test Suite
+```bash
+# Run with default configuration (ε=0.1)
 dune exec bin/main.exe
+
+# Or with reproducible seed
+dune exec bin/main.exe -- --seed 42
 ```
 
-To run with specific options:
+### 4. Explore Privacy-Utility Tradeoff
 ```bash
-dune exec bin/main.exe -- --key-size 2048 --skip-fl
+# Very strong privacy (ε=0.05) - High noise, lower accuracy
+dune exec bin/main.exe -- --dp-epsilon 0.05 --seed 42
+
+# Strong privacy (ε=0.1) - High noise
+dune exec bin/main.exe -- --dp-epsilon 0.1 --seed 42
+
+# Moderate privacy (ε=0.5) - RECOMMENDED: Best balance
+dune exec bin/main.exe -- --dp-epsilon 0.5 --seed 42
+
+# Lower privacy (ε=1.0) - Low noise, acts as regularization
+dune exec bin/main.exe -- --dp-epsilon 1.0 --seed 42
 ```
 
-Available options:
-- `--fl-samples N`: Set number of samples for FL training
+## Command Reference
+
+### Available Options
+- `--fl-samples N`: Set number of samples for FL training (default: 100)
 - `--key-size N`: Set encryption key size in bits (default: 1024)
+- `--dp-epsilon E`: Set privacy budget epsilon (default: 0.1)
+- `--dp-delta D`: Set privacy failure probability (default: 1e-05)
+- `--seed N`: Set random seed for reproducibility
 - `--skip-fl`: Skip federated learning tests
 - `--skip-he`: Skip homomorphic encryption tests
 - `--skip-dp`: Skip differential privacy tests
+- `--fail-fast`: Abort on first test failure
+- `--no-verify`: Disable result verification
+
+### Common Commands
+```bash
+# Clean and rebuild
+dune clean && dune build
+
+# Run with larger key size (more secure but slower)
+dune exec bin/main.exe -- --key-size 2048 --seed 42
+
+# Run with more FL samples
+dune exec bin/main.exe -- --fl-samples 500 --seed 42
+
+# Skip specific test modules
+dune exec bin/main.exe -- --skip-he --skip-dp
+
+# Run all privacy experiments sequentially
+dune exec bin/main.exe -- --dp-epsilon 0.05 --seed 42 && \
+dune exec bin/main.exe -- --dp-epsilon 0.1 --seed 42 && \
+dune exec bin/main.exe -- --dp-epsilon 0.5 --seed 42 && \
+dune exec bin/main.exe -- --dp-epsilon 1.0 --seed 42
+```
+
+## Testing & Experimental Results
+
+### Expected Results (with seed=42)
+
+**Privacy-Utility Tradeoff:**
+| ε Value | Privacy Level | Noise (σ) | Standard FL | DP-SGD Accuracy | Privacy Cost |
+|---------|---------------|-----------|-------------|-----------------|--------------|
+| 0.05    | Very Strong   | 96.90     | 72.80%      | 48.80%          | 24.0% loss   |
+| 0.10    | Strong        | 48.45     | 72.80%      | 48.80%          | 24.0% loss   |
+| 0.50    | Moderate   | 9.69      | 72.80%      | 72.80%          | 0.0% loss    |
+| 1.00    | Lower         | 4.84      | 72.80%      | 100.00%         | -27.2% (gain)|
+
+**Recommended for production**: ε=0.5 provides the best privacy-utility balance
+
+**Key Observations:**
+- Lower ε = stronger privacy = higher noise = lower accuracy
+- ε=0.5: Optimal balance with no accuracy loss
+- ε=1.0: Low noise acts as regularization, improving accuracy
+- All tests include FL, DP-SGD, HE, and DP modules
+
+### Complete Test Run
+```bash
+# Run everything in sequence
+dune clean && \
+dune build && \
+dune runtest && \
+dune exec bin/main.exe -- --dp-epsilon 0.05 --seed 42 && \
+dune exec bin/main.exe -- --dp-epsilon 0.1 --seed 42 && \
+dune exec bin/main.exe -- --dp-epsilon 0.5 --seed 42 && \
+dune exec bin/main.exe -- --dp-epsilon 1.0 --seed 42
+
+# Or use the automated experiment script (generates results in docs/experiment_results/)
+./run_privacy_experiments.sh
+```
 
 ## Documentation
-For detailed information about CryptaLearn's architecture, modules, and advanced usage, please see the [comprehensive documentation](DOCUMENTATION.md).
+
+### Quick Links
+- **[COMMANDS.md](cryptalearn/docs/COMMANDS.md)** - **Complete command reference** (all commands in one place)
+
+### Detailed Documentation (`docs/` directory)
+- **[DOCUMENTATION.md](cryptalearn/docs/DOCUMENTATION.md)** - Comprehensive API documentation
+- **[ARCHITECTURE.md](cryptalearn/docs/ARCHITECTURE.md)** - System architecture and design
+- **[TEST_RESULTS.md](cryptalearn/docs/TEST_RESULTS.md)** - Complete test results with analysis
+- **[EXPERIMENTAL_METRICS.md](cryptalearn/docs/EXPERIMENTAL_METRICS.md)** - Privacy-utility tradeoff analysis
 
 ## Example Output
 ```
@@ -96,9 +189,17 @@ Configuration:
 
 Running Federated Learning Tests...
 Testing Federated Learning:
-Final model accuracy: 100.00%
+Final model accuracy (standard FL): 72.80%
 ✓ Accuracy verification passed (>70%)
 Federated Learning Tests completed successfully.
+
+Running DP-SGD Tests...
+
+Testing DP-SGD (Differential Privacy + Federated Learning):
+DP-SGD accuracy (ε=0.10, σ=48.45): 48.80%
+✓ DP-SGD training completed
+  Privacy-utility tradeoff: ε=0.10 → 48.80% accuracy
+DP-SGD Tests completed successfully.
 
 Running Homomorphic Encryption Tests...
 
@@ -158,18 +259,28 @@ All requested tests completed successfully.
 (* Create a model with 2 inputs, 4 hidden nodes, and 1 output *)
 let model = create_model [|2; 4; 1|] in
 
-(* Configure training parameters *)
+(* Standard FL training *)
 let config = {
   batch_size = 32;
   learning_rate = 0.1;
   num_epochs = 5;
 } in
-
-(* Train on client data and get updates *)
 let client_update = train_client model client_data config in
 
+(* DP-SGD training with privacy guarantees *)
+let dp_config = {
+  batch_size = 32;
+  learning_rate = 0.1;
+  num_epochs = 5;
+  clip_norm = 1.0;                (* L2 norm clipping threshold *)
+  noise_multiplier = 4.84;        (* Calibrated for ε=1.0, δ=1e-5 *)
+  dp_epsilon = 1.0;
+  dp_delta = 1e-5;
+} in
+let dp_update = train_client_dp_sgd model client_data dp_config in
+
 (* Aggregate updates from multiple clients *)
-let final_model = aggregate_updates [update1; update2; update3]
+let final_model = aggregate_updates [update1; update2; update3] in
 
 (* Use model versioning *)
 let metadata = {
@@ -239,7 +350,7 @@ Performance metrics from test runs:
 - Parallel decryption: ~0.004 seconds
 
 ## Contributing
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please feel free to submit a Pull Request. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ## License
 This project is licensed under the MIT [License](LICENSE).

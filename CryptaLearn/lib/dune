@@ -1,4 +1,4 @@
 (library
  (name cryptalearn)
  (public_name CryptaLearn)
- (libraries core))
+ (libraries core unix CryptaLearn.fl CryptaLearn.he CryptaLearn.dp))

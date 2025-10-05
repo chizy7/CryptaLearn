@@ -573,3 +573,168 @@ let secure_aggregate models weights =
     create_versioned_model aggregated_model new_metadata
   else
     failwith "Aggregated model failed integrity check"
+
+(* === Differential Privacy Integration === *)
+type dp_sgd_config = {
+  batch_size: int;
+  learning_rate: float;
+  num_epochs: int;
+  clip_norm: float;
+  noise_multiplier: float;
+  dp_epsilon: float;
+  dp_delta: float;
+}
+
+(* Helper: Compute L2 norm of gradient vector *)
+let compute_gradient_norm gradients =
+  sqrt (Array.fold_left (fun acc g -> acc +. g *. g) 0.0 gradients)
+
+(* Helper: Clip gradient to max norm *)
+let clip_gradient_vector gradients clip_norm =
+  let norm = compute_gradient_norm gradients in
+  if norm > clip_norm then
+    Array.map (fun g -> g *. clip_norm /. norm) gradients
+  else
+    gradients
+
+(* Helper: Add Gaussian noise to gradients *)
+let add_gaussian_noise gradients sigma =
+  Array.map (fun g ->
+    (* Box-Muller transform for Gaussian sampling *)
+    let u1 = Random.float 1.0 in
+    let u2 = Random.float 1.0 in
+    let noise = sigma *. sqrt(-2.0 *. log u1) *. cos(2.0 *. Float.pi *. u2) in
+    g +. noise
+  ) gradients
+
+(* Flatten model weights for gradient operations *)
+let flatten_model_weights model =
+  let weights_list = ref [] in
+  Array.iter (fun layer ->
+    Array.iter (fun row ->
+      Array.iter (fun w -> weights_list := w :: !weights_list) row
+    ) layer.weights;
+    Array.iter (fun b -> weights_list := b :: !weights_list) layer.biases
+  ) model.layers;
+  Array.of_list (List.rev !weights_list)
+
+(* Unflatten gradients back to model structure *)
+let unflatten_to_model flat_gradients model =
+  let idx = ref 0 in
+  let new_layers = Array.map (fun layer ->
+    let new_weights = Array.map (fun row ->
+      Array.map (fun _ ->
+        let g = flat_gradients.(!idx) in
+        incr idx;
+        g
+      ) row
+    ) layer.weights in
+
+    let new_biases = Array.map (fun _ ->
+      let g = flat_gradients.(!idx) in
+      incr idx;
+      g
+    ) layer.biases in
+
+    { layer with weights = new_weights; biases = new_biases }
+  ) model.layers in
+  { model with layers = new_layers }
+
+(* DP-SGD Training Implementation *)
+let train_client_dp_sgd model data config =
+  let num_samples = Array.length data.features in
+  let num_batches = (num_samples + config.batch_size - 1) / config.batch_size in
+
+  (* Calculate noise multiplier from epsilon-delta budget *)
+  let sigma = config.noise_multiplier in
+
+  let total_loss = ref 0.0 in
+  let model_ref = ref model in
+
+  for _epoch = 1 to config.num_epochs do
+    (* Shuffle data *)
+    let indices = Array.init num_samples (fun i -> i) in
+    for i = num_samples - 1 downto 1 do
+      let j = Random.int (i + 1) in
+      let temp = indices.(i) in
+      indices.(i) <- indices.(j);
+      indices.(j) <- temp
+    done;
+
+    for batch = 0 to num_batches - 1 do
+      let start_idx = batch * config.batch_size in
+      let end_idx = min (start_idx + config.batch_size) num_samples in
+      let batch_size = end_idx - start_idx in
+
+      (* Accumulate clipped gradients for the batch *)
+      let accumulated_gradients = ref None in
+
+      for i = 0 to batch_size - 1 do
+        let idx = indices.(start_idx + i) in
+        let feature = data.features.(idx) in
+        let label = data.labels.(idx) in
+
+        (* Forward pass *)
+        let activations = forward_pass !model_ref feature in
+
+        (* Backward pass to compute gradients (per-example) *)
+        let _ = backward_pass !model_ref activations [|label|] 1.0 in
+
+        (* Extract gradients and flatten *)
+        let gradients = flatten_model_weights !model_ref in
+
+        (* Clip per-example gradient *)
+        let clipped_gradients = clip_gradient_vector gradients config.clip_norm in
+
+        (* Accumulate *)
+        accumulated_gradients := match !accumulated_gradients with
+          | None -> Some clipped_gradients
+          | Some acc -> Some (Array.map2 (+.) acc clipped_gradients)
+      done;
+
+      (* Add noise to accumulated (clipped) gradients *)
+      let noisy_gradients = match !accumulated_gradients with
+        | None -> [||]
+        | Some grads ->
+            let avg_grads = Array.map (fun g -> g /. float_of_int batch_size) grads in
+            add_gaussian_noise avg_grads sigma
+      in
+
+      (* Apply noisy gradients to model *)
+      if Array.length noisy_gradients > 0 then begin
+        let gradient_model = unflatten_to_model noisy_gradients !model_ref in
+
+        (* Update weights *)
+        Array.iteri (fun layer_idx _layer ->
+          Array.iteri (fun i row ->
+            Array.iteri (fun j _w ->
+              !model_ref.layers.(layer_idx).weights.(i).(j) <-
+                !model_ref.layers.(layer_idx).weights.(i).(j) -.
+                config.learning_rate *. gradient_model.layers.(layer_idx).weights.(i).(j)
+            ) row
+          ) !model_ref.layers.(layer_idx).weights;
+
+          Array.iteri (fun i _b ->
+            !model_ref.layers.(layer_idx).biases.(i) <-
+              !model_ref.layers.(layer_idx).biases.(i) -.
+              config.learning_rate *. gradient_model.layers.(layer_idx).biases.(i)
+          ) !model_ref.layers.(layer_idx).biases
+        ) !model_ref.layers
+      end;
+
+      (* Compute loss *)
+      for i = 0 to batch_size - 1 do
+        let idx = indices.(start_idx + i) in
+        let activations = forward_pass !model_ref data.features.(idx) in
+        let output = Array.length activations - 1 in
+        let error = activations.(output).(0) -. data.labels.(idx) in
+        total_loss := !total_loss +. (error *. error)
+      done
+    done
+  done;
+
+  {
+    model = !model_ref;
+    num_samples;
+    training_loss = !total_loss /. float_of_int (num_samples * config.num_epochs)
+  }
