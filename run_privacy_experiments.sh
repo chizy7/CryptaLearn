@@ -1,5 +1,5 @@
 #!/bin/bash
-# Script to reproduce all privacy-utility tradeoff experiments for the paper
+# Script to reproduce all privacy-utility tradeoff experiments
 # Compatible with Bash 3.2+ (macOS default)
 
 set -e  # Exit on error
