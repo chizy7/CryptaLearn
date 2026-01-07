@@ -7,7 +7,7 @@ This document contains all commands to build, test, and run CryptaLearn experime
 ## Installation & Setup
 
 ```bash
-# Install dependencies
+# Install the dependencies
 opam install dune core zarith unix threads
 
 # Clone the repository

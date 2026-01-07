@@ -199,7 +199,7 @@ Testing private mean computation with DP:
 ### Running the Experiments
 
 ```bash
-# Install dependencies
+# Install the dependencies
 opam install dune core zarith
 
 # Build the project
