@@ -290,7 +290,7 @@ All tests passed successfully across all modules:
 
 - **For High Privacy**: Use ε ≤ 0.1 (expect higher noise, lower utility)
 - **For Balanced Privacy-Utility**: Use ε = 0.5
-- **For Production Systems**: Use 2048-bit keys for HE (accept 6-7× performance cost).
+- **For Production Systems**: Use 2048-bit keys for HE (accept 6-7× performance cost)
 - **For Development/Testing**: Use 1024-bit keys and ε = 1.0
 
 ---
