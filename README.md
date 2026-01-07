@@ -166,13 +166,13 @@ dune exec bin/main.exe -- --dp-epsilon 1.0 --seed 42
 ## Documentation
 
 ### Quick Links
-- **[commands.md](/Cryptalearn/docs/commands.md)** - **Complete command reference** (all commands in one place)
+- **[commands.md](CryptaLearn/docs/commands.md)** - **Complete command reference** (all commands in one place)
 
 ### Detailed Documentation (`docs/` directory)
-- **[documentation.md](/Cryptalearn/docs/documentation.md)** - Comprehensive API documentation
-- **[architecture.md](/Cryptalearn/docs/architecture.md)** - System architecture and design
-- **[test_results.md](/Cryptalearn/docs/test_results.md)** - Complete test results with analysis
-- **[experimental_metrics.md](/Cryptalearn/docs/experimental_metrics.md)** - Privacy-utility tradeoff analysis
+- **[documentation.md](CryptaLearn/docs/documentation.md)** - Comprehensive API documentation
+- **[architecture.md](CryptaLearn/docs/architecture.md)** - System architecture and design
+- **[test_results.md](CryptaLearn/docs/test_results.md)** - Complete test results with analysis
+- **[experimental_metrics.md](CryptaLearn/docs/experimental_metrics.md)** - Privacy-utility tradeoff analysis
 
 ## Example Output
 ```
